@@ -27,8 +27,8 @@ export class GameGateway
 	readonly initRightPaddleX: number = this.canvasWidth - (this.paddleHeight + this.paddleMargin);
 	readonly initPaddleY: number = this.canvasHeight / 2 - this.paddleHeight / 2;
 
-	private rooms: Room[];
-	private players: gameDataDto[];
+	private rooms: Room[] = [];
+	private players: gameDataDto[] = [];
 	private drawFrame: any;
 
 	@WebSocketServer() server: Server;
@@ -67,7 +67,7 @@ export class GameGateway
 
 	}
 
-	private leftGamePlay(): void {
+	public leftGamePlay() {
 		if (this.rooms[0].leftPlayer.ballX <= 0) {
 			this.rooms[0].leftPlayer.rightScore++;
 			this.resetGame(this.rooms[0].leftPlayer);
@@ -111,10 +111,12 @@ export class GameGateway
 				this.rooms[0].leftPlayer.ballMoveX = true;
 			}
 		}
+		console.log('left game');
+		console.log(this.rooms[0].leftPlayer);
 		this.server.to(this.rooms[0].leftPlayer.socketId).emit('ballMove', this.rooms[0].leftPlayer);
 	}
 
-	private rightGamePlay(): void {
+	public rightGamePlay() {
 		if (this.rooms[0].rightPlayer.ballX <= 0) {
 			this.rooms[0].rightPlayer.rightScore++;
 			this.resetGame(this.rooms[0].rightPlayer);
@@ -158,18 +160,21 @@ export class GameGateway
 				this.rooms[0].rightPlayer.ballMoveX = false;
 			}
 		}
+		console.log('right game');
+		console.log(this.rooms[0].rightPlayer);
 		this.server.to(this.rooms[0].rightPlayer.socketId).emit('ballMove', this.rooms[0].rightPlayer);
 	}
 
-	private gamePlay() {
-		this.leftGamePlay();
-		this.rightGamePlay();
+	public gamePlay() {
+		this.leftGamePlay;
+		this.rightGamePlay;
 	}
 
-	@SubscribeMessage('connected')
+	@SubscribeMessage('connect')
 	handleConnection(
 		@ConnectedSocket() client: Socket
 	) {
+		console.log(client.id);
 		let player: gameDataDto = new gameDataDto();
 		this.initPlayer(player, client.id);
 		this.players.push(player);
@@ -191,6 +196,7 @@ export class GameGateway
 		@ConnectedSocket() client: Socket,
 		// @MessageBody() roomName: string,
 	) {
+		console.log('game ready: ', client.id);
 		if (this.rooms[0].leftPlayer && client.id === this.rooms[0].leftPlayer.socketId) {
 			this.rooms[0].leftReady = true;
 		}
@@ -199,6 +205,7 @@ export class GameGateway
 		}
 		if (this.rooms[0].leftReady && this.rooms[0].rightReady) {
 			// game start
+			console.log('should draw start');
 			this.drawFrame = setInterval(this.gamePlay, 1000 / 60);
 		}
 	}
@@ -209,6 +216,7 @@ export class GameGateway
 		@ConnectedSocket() client: Socket,
 		// @MessageBody() roomName: string,
 	) {
+		console.log(client.id, 'up key');
 		if (this.rooms[0].leftPlayer && client.id === this.rooms[0].leftPlayer.socketId) {
 			this.rooms[0].leftPlayer.leftPaddleY += 30;
 			if (this.rooms[0].leftPlayer.leftPaddleY >= this.canvasHeight)
@@ -231,6 +239,7 @@ export class GameGateway
 		@ConnectedSocket() client: Socket,
 		// @MessageBody() message: string,
 	) {
+		console.log(client.id, 'down key');
 		if (this.rooms[0].leftPlayer && client.id === this.rooms[0].leftPlayer.socketId) {
 			this.rooms[0].leftPlayer.leftPaddleY -= 30;
 			if (this.rooms[0].leftPlayer.leftPaddleY <= 0)
