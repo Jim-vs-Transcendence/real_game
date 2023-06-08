@@ -97,14 +97,14 @@ document.addEventListener('DOMContentLoaded', () => {
         if (flag) {
             context.globalAlpha = 1;
             context.font = `${scoreTextSize * 2}px Arial`;
-            context.fillStyle = 'white';
+            context.fillStyle = 'blue';
             context.textAlign = 'center';
             context.fillText('You win', canvasWidth / 2, canvasHeight / 2);
         }
         else {
             context.globalAlpha = 1;
             context.font = `${scoreTextSize * 2}px Arial`;
-            context.fillStyle = 'white';
+            context.fillStyle = 'red';
             context.textAlign = 'center';
             context.fillText('You lose', canvasWidth / 2, canvasHeight / 2);
         }

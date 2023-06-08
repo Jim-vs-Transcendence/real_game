@@ -68,7 +68,7 @@ export class GameGateway
 				this.server.to(this.rooms[0].leftPlayer.socketId).emit('endGame', false);
 				this.server.to(this.rooms[0].rightPlayer.socketId).emit('endGame', true);
 			}
-			this.rooms.shift();
+			// this.rooms.shift();
 		}
 		room.leftPlayer.ballX = this.initBallX;
 		room.leftPlayer.ballY = this.initBallY;
@@ -86,11 +86,10 @@ export class GameGateway
 	}
 
 	private async gamePlay() {
-		await this.leftGamePlay.bind(this)();
-		await this.rightGamePlay.bind(this)();
+		await this.sendGameData.bind(this)();
 	}
 
-	private leftGamePlay() {
+	private sendGameData() {
 		if (this.rooms[0].leftPlayer.ballX <= 0) {
 			this.rooms[0].leftPlayer.rightScore++;
 			this.resetGame(this.rooms[0]);
@@ -103,28 +102,37 @@ export class GameGateway
 
 		if (this.rooms[0].leftPlayer.ballY <= this.ballRadius) {
 			this.rooms[0].leftPlayer.ballMoveY = false;
+			this.rooms[0].rightPlayer.ballMoveY = false;
 		}
 		if (this.rooms[0].leftPlayer.ballY >= this.canvasHeight - this.ballRadius) {
 			this.rooms[0].leftPlayer.ballMoveY = true;
+			this.rooms[0].rightPlayer.ballMoveY = true;
 		}
 
 		if (this.rooms[0].leftPlayer.ballMoveY === true) {
 			this.rooms[0].leftPlayer.ballY -= this.rooms[0].leftPlayer.ballSpeed;
+			this.rooms[0].rightPlayer.ballY -= this.rooms[0].leftPlayer.ballSpeed;
 		}
 		else if (this.rooms[0].leftPlayer.ballMoveY === false) {
 			this.rooms[0].leftPlayer.ballY += this.rooms[0].leftPlayer.ballSpeed;
+			this.rooms[0].rightPlayer.ballY += this.rooms[0].leftPlayer.ballSpeed;
 		}
 		if (this.rooms[0].leftPlayer.ballMoveX === true) {
 			this.rooms[0].leftPlayer.ballX -= this.rooms[0].leftPlayer.ballSpeed;
+			this.rooms[0].rightPlayer.ballX += this.rooms[0].leftPlayer.ballSpeed;
 		}
 		else if (this.rooms[0].leftPlayer.ballMoveX === false) {
 			this.rooms[0].leftPlayer.ballX += this.rooms[0].leftPlayer.ballSpeed;
+			this.rooms[0].rightPlayer.ballX -= this.rooms[0].leftPlayer.ballSpeed;
 		}
 
 		if (this.rooms[0].leftPlayer.ballX - (this.ballRadius * 2) <= this.initLeftPaddleX && this.rooms[0].leftPlayer.ballX >= this.initLeftPaddleX - this.paddleWidth) {
 			if (this.rooms[0].leftPlayer.ballY <= this.rooms[0].leftPlayer.leftPaddleY + this.paddleHeight && this.rooms[0].leftPlayer.ballY >= this.rooms[0].leftPlayer.leftPaddleY) {
 				this.rooms[0].leftPlayer.ballX = this.initLeftPaddleX + this.ballRadius * 2;
 				this.rooms[0].leftPlayer.ballMoveX = false;
+				this.rooms[0].rightPlayer.ballX = this.initRightPaddleX - this.ballRadius * 2;
+				this.rooms[0].rightPlayer.ballMoveX = true;
+
 			}
 		}
 
@@ -132,61 +140,14 @@ export class GameGateway
 			if (this.rooms[0].leftPlayer.ballY <= this.rooms[0].leftPlayer.rightPaddleY + this.paddleHeight && this.rooms[0].leftPlayer.ballY >= this.rooms[0].leftPlayer.rightPaddleY) {
 				this.rooms[0].leftPlayer.ballX = this.initRightPaddleX - this.ballRadius * 2;
 				this.rooms[0].leftPlayer.ballMoveX = true;
+				this.rooms[0].rightPlayer.ballX = this.initLeftPaddleX + this.ballRadius * 2;
+				this.rooms[0].rightPlayer.ballMoveX = false;
 			}
 		}
 		console.log(this.rooms[0].leftPlayer);
 		this.server.to(this.rooms[0].leftPlayer.socketId).emit('ballMove', this.rooms[0].leftPlayer);
-	}
-
-	private rightGamePlay() {
-		// if (this.rooms[0].rightPlayer.ballX <= 0) {
-		// 	this.rooms[0].rightPlayer.rightScore++;
-		// 	this.resetGame(this.rooms[0].rightPlayer);
-
-		// }
-		// if (this.rooms[0].rightPlayer.ballX >= this.canvasWidth - this.ballRadius * 2) {
-		// 	this.rooms[0].rightPlayer.leftScore++;
-		// 	this.resetGame(this.rooms[0].rightPlayer);
-		// } ``
-
-		if (this.rooms[0].rightPlayer.ballY <= this.ballRadius) {
-			this.rooms[0].rightPlayer.ballMoveY = false;
-		}
-		if (this.rooms[0].rightPlayer.ballY >= this.canvasHeight - this.ballRadius) {
-			this.rooms[0].rightPlayer.ballMoveY = true;
-		}
-
-		if (this.rooms[0].rightPlayer.ballMoveY === true) {
-			this.rooms[0].rightPlayer.ballY -= this.rooms[0].rightPlayer.ballSpeed;
-		}
-		else if (this.rooms[0].rightPlayer.ballMoveY === false) {
-			this.rooms[0].rightPlayer.ballY += this.rooms[0].rightPlayer.ballSpeed;
-		}
-		if (this.rooms[0].rightPlayer.ballMoveX === true) {
-			this.rooms[0].rightPlayer.ballX += this.rooms[0].rightPlayer.ballSpeed;
-		}
-		else if (this.rooms[0].rightPlayer.ballMoveX === false) {
-			this.rooms[0].rightPlayer.ballX -= this.rooms[0].rightPlayer.ballSpeed;
-		}
-
-		if (this.rooms[0].rightPlayer.ballX - (this.ballRadius * 2) <= this.initLeftPaddleX && this.rooms[0].rightPlayer.ballX >= this.initLeftPaddleX - this.paddleWidth) {
-			if (this.rooms[0].rightPlayer.ballY <= this.rooms[0].rightPlayer.leftPaddleY + this.paddleHeight && this.rooms[0].rightPlayer.ballY >= this.rooms[0].rightPlayer.leftPaddleY) {
-				this.rooms[0].rightPlayer.ballX = this.initLeftPaddleX + this.ballRadius * 2;
-				this.rooms[0].rightPlayer.ballMoveX = true;
-			}
-		}
-
-		if (this.rooms[0].rightPlayer.ballX - (this.ballRadius * 2) <= this.initRightPaddleX && this.rooms[0].rightPlayer.ballX >= this.initRightPaddleX - this.paddleWidth) {
-			if (this.rooms[0].rightPlayer.ballY <= this.rooms[0].rightPlayer.rightPaddleY + this.paddleHeight && this.rooms[0].rightPlayer.ballY >= this.rooms[0].rightPlayer.rightPaddleY) {
-				this.rooms[0].rightPlayer.ballX = this.initRightPaddleX - this.ballRadius * 2;
-				this.rooms[0].rightPlayer.ballMoveX = false;
-			}
-		}
-		console.log(this.rooms[0].rightPlayer);
 		this.server.to(this.rooms[0].rightPlayer.socketId).emit('ballMove', this.rooms[0].rightPlayer);
 	}
-
-	
 
 	@SubscribeMessage('connect')
 	handleConnection(
