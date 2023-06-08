@@ -1,177 +1,53 @@
 import { WebSocketGateway, WebSocketServer, ConnectedSocket, SubscribeMessage, MessageBody } from '@nestjs/websockets';
-import { Server, Socket } from 'socket.io';
+import { Server, Socket, Namespace } from 'socket.io';
 import { gameDataDto } from './gameDto/gameData.dto';
 import { Room } from './data/playerData'
+import { GameService } from './game.service';
+
+/* 
+ * service : gateway에서 호출되어 게임 내부 로직 변경 (현재 게이트웨이에 있는 private 함수들)
+ * gateway : 클라이언트에서 받은 소켓 정보를 service 함수를 호출하여 핸들링
+ * 
+ * 문제는 gateway에서 rooms 배열을 가지고 있는데, timeout 함수 호출 시 해당 room을 지워야 함.
+ * 그러면 gateway에서 room을 찾아 지워주는 함수를 만들고, service에서 gateway함수를 호출하여 해당 room 삭제 되게
+ * -> 서비스에서 constructor로 게이트웨이를 가지고 있으니까 해당 요소를 불러서 삭제하도록 하면 될 듯?
+ */
 
 @WebSocketGateway()
 export class GameGateway
 // implements OnGatewayConnection, OnGatewayDisconnect 
 {
-
-	// private test: gameDataDto = new gameDataDto();
-
+	constructor(private readonly gameService: GameService) { }
 	// Canvas Info
-	readonly canvasWidth: number = 1600;
-	readonly canvasHeight: number = 800;
-	readonly canvasColor: string = 'black' /* |  param */;
 
-	readonly initBallX: number = this.canvasWidth / 2;
-	readonly initBallY: number = this.canvasHeight / 2;
-	readonly ballRadius: number = Math.min(this.canvasWidth * 0.02, this.canvasHeight * 0.02) /* * ballSize */;
-
-	readonly paddleWidth: number = this.canvasWidth * 0.02;
-	readonly paddleHeight: number = this.canvasHeight * 0.2;
-	readonly paddleMargin: number = this.canvasWidth * 0.05;
-
-	readonly initLeftPaddleX: number = this.paddleMargin;
-	readonly initRightPaddleX: number = this.canvasWidth - (this.paddleHeight + this.paddleMargin);
-	readonly initPaddleY: number = this.canvasHeight / 2 - this.paddleHeight / 2;
-
-	private rooms: Room[];
-	private players: gameDataDto[];
-	private drawFrame: any;
+	protected rooms: Room[] = [];
+	private players: gameDataDto[] = [];
 
 	@WebSocketServer() server: Server;
+	gameNamespace: Namespace;
 
-	private initPlayer(player: gameDataDto, socketId: string) {
-		player.socketId = socketId;
-		player.canvasWidth = this.canvasWidth;
-		player.canvasHeight = this.canvasHeight;
-		player.canvasColor = this.canvasColor;
-
-		player.ballX = this.initBallX;
-		player.ballY = this.initBallY;
-		player.ballRadius = this.ballRadius;
-
-		player.paddleWidth = this.paddleWidth;
-		player.paddleHeight = this.paddleHeight;
-		player.leftPaddleX = this.initLeftPaddleX;
-		player.rightPaddleX = this.initRightPaddleX;
-		player.leftPaddleY = this.initPaddleY;
-		player.rightPaddleY = this.initPaddleY;
-
-		player.leftScore = 0;
-		player.rightScore = 0;
+	afterInit(server: Server) {
+		this.gameNamespace = server.of('/game');
 	}
 
-	private resetGame(player: gameDataDto): void {
-		if (player.leftScore >= 3 || player.rightScore >= 3) {
-			clearInterval(this.drawFrame);
-		}
-		player.ballX = this.initBallX;
-		player.ballY = this.initBallY;
-		player.leftPaddleY = this.initPaddleY;
-		player.rightPaddleY = this.initPaddleY;
-		player.ballMoveX = false;
-		player.ballMoveY = false;
-
+	public getRooms(): Room[] {
+		return this.rooms;
 	}
 
-	private leftGamePlay(): void {
-		if (this.rooms[0].leftPlayer.ballX <= 0) {
-			this.rooms[0].leftPlayer.rightScore++;
-			this.resetGame(this.rooms[0].leftPlayer);
-
-		}
-		if (this.rooms[0].leftPlayer.ballX >= this.canvasWidth - this.ballRadius * 2) {
-			this.rooms[0].leftPlayer.leftScore++;
-			this.resetGame(this.rooms[0].leftPlayer);
-		}
-
-		if (this.rooms[0].leftPlayer.ballY <= this.ballRadius) {
-			this.rooms[0].leftPlayer.ballMoveY = false;
-		}
-		if (this.rooms[0].leftPlayer.ballY >= this.canvasHeight - this.ballRadius) {
-			this.rooms[0].leftPlayer.ballMoveY = true;
-		}
-
-		if (this.rooms[0].leftPlayer.ballMoveY === true) {
-			this.rooms[0].leftPlayer.ballY -= this.rooms[0].leftPlayer.ballSpeed;
-		}
-		else if (this.rooms[0].leftPlayer.ballMoveY === false) {
-			this.rooms[0].leftPlayer.ballY += this.rooms[0].leftPlayer.ballSpeed;
-		}
-		if (this.rooms[0].leftPlayer.ballMoveX === true) {
-			this.rooms[0].leftPlayer.ballX -= this.rooms[0].leftPlayer.ballSpeed;
-		}
-		else if (this.rooms[0].leftPlayer.ballMoveX === false) {
-			this.rooms[0].leftPlayer.ballX += this.rooms[0].leftPlayer.ballSpeed;
-		}
-
-		if (this.rooms[0].leftPlayer.ballX - (this.ballRadius * 2) <= this.initLeftPaddleX && this.rooms[0].leftPlayer.ballX >= this.initLeftPaddleX - this.paddleWidth) {
-			if (this.rooms[0].leftPlayer.ballY <= this.rooms[0].leftPlayer.leftPaddleY + this.paddleHeight && this.rooms[0].leftPlayer.ballY >= this.rooms[0].leftPlayer.leftPaddleY) {
-				this.rooms[0].leftPlayer.ballX = this.initLeftPaddleX + this.ballRadius * 2;
-				this.rooms[0].leftPlayer.ballMoveX = false;
-			}
-		}
-
-		if (this.rooms[0].leftPlayer.ballX - (this.ballRadius * 2) <= this.initRightPaddleX && this.rooms[0].leftPlayer.ballX >= this.initRightPaddleX - this.paddleWidth) {
-			if (this.rooms[0].leftPlayer.ballY <= this.rooms[0].leftPlayer.rightPaddleY + this.paddleHeight && this.rooms[0].leftPlayer.ballY >= this.rooms[0].leftPlayer.rightPaddleY) {
-				this.rooms[0].leftPlayer.ballX = this.initRightPaddleX - this.ballRadius * 2;
-				this.rooms[0].leftPlayer.ballMoveX = true;
-			}
-		}
-		this.server.to(this.rooms[0].leftPlayer.socketId).emit('ballMove', this.rooms[0].leftPlayer);
+	public findRoom(roomName: string): Room {
+		let room: Room = this.rooms.find((room: Room) =>
+			room.roomName === roomName);
+		return room;
 	}
 
-	private rightGamePlay(): void {
-		if (this.rooms[0].rightPlayer.ballX <= 0) {
-			this.rooms[0].rightPlayer.rightScore++;
-			this.resetGame(this.rooms[0].rightPlayer);
-
-		}
-		if (this.rooms[0].rightPlayer.ballX >= this.canvasWidth - this.ballRadius * 2) {
-			this.rooms[0].rightPlayer.leftScore++;
-			this.resetGame(this.rooms[0].rightPlayer);
-		} ``
-
-		if (this.rooms[0].rightPlayer.ballY <= this.ballRadius) {
-			this.rooms[0].rightPlayer.ballMoveY = false;
-		}
-		if (this.rooms[0].rightPlayer.ballY >= this.canvasHeight - this.ballRadius) {
-			this.rooms[0].rightPlayer.ballMoveY = true;
-		}
-
-		if (this.rooms[0].rightPlayer.ballMoveY === true) {
-			this.rooms[0].rightPlayer.ballY -= this.rooms[0].rightPlayer.ballSpeed;
-		}
-		else if (this.rooms[0].rightPlayer.ballMoveY === false) {
-			this.rooms[0].rightPlayer.ballY += this.rooms[0].rightPlayer.ballSpeed;
-		}
-		if (this.rooms[0].rightPlayer.ballMoveX === true) {
-			this.rooms[0].rightPlayer.ballX += this.rooms[0].rightPlayer.ballSpeed;
-		}
-		else if (this.rooms[0].rightPlayer.ballMoveX === false) {
-			this.rooms[0].rightPlayer.ballX -= this.rooms[0].rightPlayer.ballSpeed;
-		}
-
-		if (this.rooms[0].rightPlayer.ballX - (this.ballRadius * 2) <= this.initLeftPaddleX && this.rooms[0].rightPlayer.ballX >= this.initLeftPaddleX - this.paddleWidth) {
-			if (this.rooms[0].rightPlayer.ballY <= this.rooms[0].rightPlayer.leftPaddleY + this.paddleHeight && this.rooms[0].rightPlayer.ballY >= this.rooms[0].rightPlayer.leftPaddleY) {
-				this.rooms[0].rightPlayer.ballX = this.initLeftPaddleX + this.ballRadius * 2;
-				this.rooms[0].rightPlayer.ballMoveX = true;
-			}
-		}
-
-		if (this.rooms[0].rightPlayer.ballX - (this.ballRadius * 2) <= this.initRightPaddleX && this.rooms[0].rightPlayer.ballX >= this.initRightPaddleX - this.paddleWidth) {
-			if (this.rooms[0].rightPlayer.ballY <= this.rooms[0].rightPlayer.rightPaddleY + this.paddleHeight && this.rooms[0].rightPlayer.ballY >= this.rooms[0].rightPlayer.rightPaddleY) {
-				this.rooms[0].rightPlayer.ballX = this.initRightPaddleX - this.ballRadius * 2;
-				this.rooms[0].rightPlayer.ballMoveX = false;
-			}
-		}
-		this.server.to(this.rooms[0].rightPlayer.socketId).emit('ballMove', this.rooms[0].rightPlayer);
-	}
-
-	private gamePlay() {
-		this.leftGamePlay();
-		this.rightGamePlay();
-	}
-
-	@SubscribeMessage('connected')
+	@SubscribeMessage('connect')
 	handleConnection(
 		@ConnectedSocket() client: Socket
 	) {
+		console.log(client.id);
 		let player: gameDataDto = new gameDataDto();
-		this.initPlayer(player, client.id);
+		this.gameService.initPlayer(player, client.id);
+		this.server.to(client.id).emit('connected', player);
 		this.players.push(player);
 
 		if (this.players.length >= 2) {
@@ -182,6 +58,8 @@ export class GameGateway
 			room.leftPlayer.roomName = room.roomName;
 			room.rightPlayer.roomName = room.roomName;
 			this.rooms.push(room);
+			this.server.to(room.leftPlayer.socketId).emit('roomName', room.roomName);
+			this.server.to(room.rightPlayer.socketId).emit('roomName', room.roomName);
 		}
 	}
 
@@ -189,62 +67,57 @@ export class GameGateway
 	@SubscribeMessage('gameReady')
 	handleEnter(
 		@ConnectedSocket() client: Socket,
-		// @MessageBody() roomName: string,
+		@MessageBody() roomName: string,
 	) {
-		if (this.rooms[0].leftPlayer && client.id === this.rooms[0].leftPlayer.socketId) {
-			this.rooms[0].leftReady = true;
+		console.log(roomName);
+		let room = this.findRoom(roomName);
+		if (room) {
+			this.gameService.getReady(room, client.id);
 		}
-		else if (this.rooms[0].rightPlayer && client.id === this.rooms[0].rightPlayer.socketId) {
-			this.rooms[0].rightReady = true;
-		}
-		if (this.rooms[0].leftReady && this.rooms[0].rightReady) {
-			// game start
-			this.drawFrame = setInterval(this.gamePlay, 1000 / 60);
+		else {
+			console.log('no room');
 		}
 	}
 
 	// Up Key pressed : Paddle up
-	@SubscribeMessage('upKey')
+	@SubscribeMessage('downKey')
 	handlePaddleUp(
 		@ConnectedSocket() client: Socket,
-		// @MessageBody() roomName: string,
+		@MessageBody() roomName: string,
 	) {
-		if (this.rooms[0].leftPlayer && client.id === this.rooms[0].leftPlayer.socketId) {
-			this.rooms[0].leftPlayer.leftPaddleY += 30;
-			if (this.rooms[0].leftPlayer.leftPaddleY >= this.canvasHeight)
-				this.rooms[0].leftPlayer.leftPaddleY = this.canvasHeight;
-			this.rooms[0].rightPlayer.rightPaddleY = this.rooms[0].leftPlayer.leftPaddleY;
+		let room = this.findRoom(roomName);
+		if (room) {
+			this.gameService.paddleDown(room, client.id);
 		}
-		else if (this.rooms[0].rightPlayer && client.id === this.rooms[0].rightPlayer.socketId) {
-			this.rooms[0].rightPlayer.leftPaddleY += 30;
-			if (this.rooms[0].rightPlayer.leftPaddleY >= this.canvasHeight)
-				this.rooms[0].rightPlayer.leftPaddleY = this.canvasHeight;
-			this.rooms[0].leftPlayer.rightPaddleY = this.rooms[0].rightPlayer.leftPaddleY;
+		else {
+			console.log('No such room');
 		}
-		// this.server.to(this.rooms[0].leftPlayer.socketId).emit('upKey', this.rooms[0].leftPlayer);
-		// this.server.to(this.rooms[0].rightPlayer.socketId).emit('upKey', this.rooms[0].rightPlayer);
 	}
 
 	// Down Key pressed : Paddle down
-	@SubscribeMessage('downKey')
+	@SubscribeMessage('upKey')
 	handlePaddleDown(
 		@ConnectedSocket() client: Socket,
-		// @MessageBody() message: string,
+		@MessageBody() roomName: string,
 	) {
-		if (this.rooms[0].leftPlayer && client.id === this.rooms[0].leftPlayer.socketId) {
-			this.rooms[0].leftPlayer.leftPaddleY -= 30;
-			if (this.rooms[0].leftPlayer.leftPaddleY <= 0)
-				this.rooms[0].leftPlayer.leftPaddleY = 0;
-			this.rooms[0].rightPlayer.rightPaddleY = this.rooms[0].leftPlayer.leftPaddleY;
+		let room = this.findRoom(roomName);
+		if (room) {
+			this.gameService.paddleUp(room, client.id);
 		}
-		else if (this.rooms[0].rightPlayer && client.id === this.rooms[0].rightPlayer.socketId) {
-			this.rooms[0].rightPlayer.leftPaddleY -= 30;
-			if (this.rooms[0].rightPlayer.leftPaddleY <= 0)
-				this.rooms[0].rightPlayer.leftPaddleY = 0;
-			this.rooms[0].leftPlayer.rightPaddleY = this.rooms[0].rightPlayer.leftPaddleY;
-		}
-		// this.server.to(this.rooms[0].leftPlayer.socketId).emit('upKey', this.rooms[0].leftPlayer);
-		// this.server.to(this.rooms[0].rightPlayer.socketId).emit('upKey', this.rooms[0].rightPlayer);
 	}
 
+
+	@SubscribeMessage('leftTest')
+	waitTester(
+		@ConnectedSocket() client: Socket,
+		@MessageBody() roomName: string,
+	) {
+		console.log(roomName);
+		let room = this.findRoom(roomName);
+		if (room) {
+			console.log(room.endTimer);
+			clearTimeout(room.endTimer);
+
+		}
+	}
 }

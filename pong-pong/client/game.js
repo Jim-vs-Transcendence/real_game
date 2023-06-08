@@ -35,10 +35,10 @@ document.addEventListener('DOMContentLoaded', () => {
     let score2X;
     let score2Y;
 
-
+    let cnt = 0;
     /*
-    * Socket Handling
-    */
+* Socket Handling
+*/
     playerSocket.on('connected', (data) => {
         // canvasWidth = data.canvasWidth * widthRatio;
         // canvasHeight = data.canvasHeight * heightRatio;
@@ -73,14 +73,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
     window.addEventListener('keydown', function (event) {
         if (event.key === 'Enter') {
+            cnt++;
             console.log('enter press')
-            playerSocket.emit('gameReady', roomName);
+            if (cnt === 1) {
+                playerSocket.emit('gameReady', roomName);
+            }
         } else if (event.key === 'ArrowDown') {
             console.log('up press')
-            playerSocket.emit('upKey', roomName);
+            playerSocket.emit('downKey', roomName);
         } else if (event.key === 'ArrowUp') {
             console.log('down press')
-            playerSocket.emit('downKey', roomName);
+            playerSocket.emit('upKey', roomName);
+        } else if (event.key === 'ArrowLeft') {
+            console.log('down press')
+            playerSocket.emit('leftTest', roomName);
         }
     });
 
