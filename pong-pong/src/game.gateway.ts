@@ -11,21 +11,21 @@ export class GameGateway
 	// private test: gameDataDto = new gameDataDto();
 
 	// Canvas Info
-	readonly canvasWidth: number = 1600;
-	readonly canvasHeight: number = 800;
-	readonly canvasColor: string = 'black' /* |  param */;
+	private readonly canvasWidth: number = 1200;
+	private readonly canvasHeight: number = 600;
+	private readonly canvasColor: string = 'black' /* |  param */;
 
-	readonly initBallX: number = this.canvasWidth / 2;
-	readonly initBallY: number = this.canvasHeight / 2;
-	readonly ballRadius: number = Math.min(this.canvasWidth * 0.02, this.canvasHeight * 0.02) /* * ballSize */;
+	private readonly initBallX: number = this.canvasWidth / 2;
+	private readonly initBallY: number = this.canvasHeight / 2;
+	private readonly ballRadius: number = Math.min(this.canvasWidth * 0.02, this.canvasHeight * 0.02) /* * ballSize */;
 
-	readonly paddleWidth: number = this.canvasWidth * 0.02;
-	readonly paddleHeight: number = this.canvasHeight * 0.2;
-	readonly paddleMargin: number = this.canvasWidth * 0.05;
+	private readonly paddleWidth: number = this.canvasWidth * 0.02;
+	private readonly paddleHeight: number = this.canvasHeight * 0.2;
+	private readonly paddleMargin: number = this.canvasWidth * 0.05;
 
-	readonly initLeftPaddleX: number = this.paddleMargin;
-	readonly initRightPaddleX: number = this.canvasWidth - (this.paddleHeight + this.paddleMargin);
-	readonly initPaddleY: number = this.canvasHeight / 2 - this.paddleHeight / 2;
+	private readonly initLeftPaddleX: number = this.paddleMargin;
+	private readonly initRightPaddleX: number = this.canvasWidth - (this.paddleWidth + this.paddleMargin);
+	private readonly initPaddleY: number = this.canvasHeight / 2 - this.paddleHeight / 2;
 
 	private rooms: Room[] = [];
 	private players: gameDataDto[] = [];
@@ -42,6 +42,7 @@ export class GameGateway
 		player.ballX = this.initBallX;
 		player.ballY = this.initBallY;
 		player.ballRadius = this.ballRadius;
+		player.ballSpeed = 3;
 
 		player.paddleWidth = this.paddleWidth;
 		player.paddleHeight = this.paddleHeight;
@@ -67,7 +68,16 @@ export class GameGateway
 
 	}
 
-	public leftGamePlay() {
+	private gamePlay() {
+		this.leftGamePlay.bind(this)();
+		this.rightGamePlay.bind(this)();
+		// this.leftGamePlay();
+		// this.rightGamePlay();
+	}
+
+	private leftGamePlay() {
+		if (this.rooms[0])
+			console.log('left data fine');
 		if (this.rooms[0].leftPlayer.ballX <= 0) {
 			this.rooms[0].leftPlayer.rightScore++;
 			this.resetGame(this.rooms[0].leftPlayer);
@@ -111,12 +121,13 @@ export class GameGateway
 				this.rooms[0].leftPlayer.ballMoveX = true;
 			}
 		}
-		console.log('left game');
 		console.log(this.rooms[0].leftPlayer);
 		this.server.to(this.rooms[0].leftPlayer.socketId).emit('ballMove', this.rooms[0].leftPlayer);
 	}
 
-	public rightGamePlay() {
+	private rightGamePlay() {
+		if (this.rooms[0])
+			console.log('right data fine');
 		if (this.rooms[0].rightPlayer.ballX <= 0) {
 			this.rooms[0].rightPlayer.rightScore++;
 			this.resetGame(this.rooms[0].rightPlayer);
@@ -160,15 +171,11 @@ export class GameGateway
 				this.rooms[0].rightPlayer.ballMoveX = false;
 			}
 		}
-		console.log('right game');
 		console.log(this.rooms[0].rightPlayer);
 		this.server.to(this.rooms[0].rightPlayer.socketId).emit('ballMove', this.rooms[0].rightPlayer);
 	}
 
-	public gamePlay() {
-		this.leftGamePlay;
-		this.rightGamePlay;
-	}
+	
 
 	@SubscribeMessage('connect')
 	handleConnection(
@@ -177,6 +184,7 @@ export class GameGateway
 		console.log(client.id);
 		let player: gameDataDto = new gameDataDto();
 		this.initPlayer(player, client.id);
+		this.server.to(client.id).emit('connected', player);
 		this.players.push(player);
 
 		if (this.players.length >= 2) {
@@ -205,8 +213,12 @@ export class GameGateway
 		}
 		if (this.rooms[0].leftReady && this.rooms[0].rightReady) {
 			// game start
-			console.log('should draw start');
-			this.drawFrame = setInterval(this.gamePlay, 1000 / 60);
+			this.rooms[0].leftPlayer.ballMoveX = false;
+			this.rooms[0].leftPlayer.ballMoveY = false;
+			this.rooms[0].rightPlayer.ballMoveX = false;
+			this.rooms[0].rightPlayer.ballMoveY = false;
+			this.drawFrame = setInterval(() => this.gamePlay(), 1000 / 60);
+			// this.drawFrame = setInterval(this.gamePlay, 1000 / 60);
 		}
 	}
 
@@ -219,13 +231,13 @@ export class GameGateway
 		console.log(client.id, 'up key');
 		if (this.rooms[0].leftPlayer && client.id === this.rooms[0].leftPlayer.socketId) {
 			this.rooms[0].leftPlayer.leftPaddleY += 30;
-			if (this.rooms[0].leftPlayer.leftPaddleY >= this.canvasHeight)
+			if (this.rooms[0].leftPlayer.leftPaddleY - this.paddleHeight >= this.canvasHeight)
 				this.rooms[0].leftPlayer.leftPaddleY = this.canvasHeight;
 			this.rooms[0].rightPlayer.rightPaddleY = this.rooms[0].leftPlayer.leftPaddleY;
 		}
 		else if (this.rooms[0].rightPlayer && client.id === this.rooms[0].rightPlayer.socketId) {
 			this.rooms[0].rightPlayer.leftPaddleY += 30;
-			if (this.rooms[0].rightPlayer.leftPaddleY >= this.canvasHeight)
+			if (this.rooms[0].rightPlayer.leftPaddleY - this.paddleHeight >= this.canvasHeight)
 				this.rooms[0].rightPlayer.leftPaddleY = this.canvasHeight;
 			this.rooms[0].leftPlayer.rightPaddleY = this.rooms[0].rightPlayer.leftPaddleY;
 		}
