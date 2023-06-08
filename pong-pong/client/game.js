@@ -47,7 +47,6 @@ document.addEventListener('DOMContentLoaded', () => {
     * Socket Handling
     */
     playerSocket.on('connected', (data) => {
-        console.log(data);
         // canvasWidth = data.canvasWidth * widthRatio;
         // canvasHeight = data.canvasHeight * heightRatio;
         canvasWidth = data.canvasWidth;
@@ -77,14 +76,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     window.addEventListener('keydown', function(event) {
         if (event.key === 'Enter') {
-          console.log('Enter key pressed');
-          playerSocket.emit('gameReady');
+            playerSocket.emit('gameReady', 'room1');
         } else if (event.key === 'ArrowDown') {
-          console.log('Up arrow key pressed');
-          playerSocket.emit('upKey');
+            playerSocket.emit('upKey');
         } else if (event.key === 'ArrowUp') {
-          console.log('Down arrow key pressed');
-          playerSocket.emit('downKey');
+            playerSocket.emit('downKey');
         }
       });
 
@@ -111,8 +107,6 @@ document.addEventListener('DOMContentLoaded', () => {
     })
 
     function draw(player) {
-        console.log('draw func in');
-        console.log(player);
         context.clearRect(0, 0, canvasWidth, canvasHeight);
         context.beginPath();
         context.arc(player.ballX, player.ballY, ballRadius, 0, Math.PI * 2, false);
@@ -130,7 +124,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
         context.globalAlpha = 1;
 
-        console.log(paddleWidth, ' ', paddleHeight);
         context.fillStyle = 'white';
         context.fillRect(player.leftPaddleX, player.leftPaddleY, paddleWidth, paddleHeight);
 

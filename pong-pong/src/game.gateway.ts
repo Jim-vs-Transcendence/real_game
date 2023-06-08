@@ -174,8 +174,9 @@ export class GameGateway
 	@SubscribeMessage('gameReady')
 	handleEnter(
 		@ConnectedSocket() client: Socket,
-		// @MessageBody() roomName: string,
+		@MessageBody() roomName: string,
 	) {
+		console.log(roomName);
 		if (this.rooms[0].leftPlayer && client.id === this.rooms[0].leftPlayer.socketId) {
 			this.rooms[0].leftReady = true;
 		}
@@ -200,18 +201,16 @@ export class GameGateway
 	) {
 		if (this.rooms[0].leftPlayer && client.id === this.rooms[0].leftPlayer.socketId) {
 			this.rooms[0].leftPlayer.leftPaddleY += 30;
-			if (this.rooms[0].leftPlayer.leftPaddleY - this.paddleHeight >= this.canvasHeight)
-				this.rooms[0].leftPlayer.leftPaddleY = this.canvasHeight;
+			if (this.rooms[0].leftPlayer.leftPaddleY >= this.canvasHeight - this.paddleHeight)
+				this.rooms[0].leftPlayer.leftPaddleY = this.canvasHeight - this.paddleHeight;
 			this.rooms[0].rightPlayer.rightPaddleY = this.rooms[0].leftPlayer.leftPaddleY;
 		}
 		else if (this.rooms[0].rightPlayer && client.id === this.rooms[0].rightPlayer.socketId) {
 			this.rooms[0].rightPlayer.leftPaddleY += 30;
-			if (this.rooms[0].rightPlayer.leftPaddleY - this.paddleHeight >= this.canvasHeight)
-				this.rooms[0].rightPlayer.leftPaddleY = this.canvasHeight;
+			if (this.rooms[0].rightPlayer.leftPaddleY >= this.canvasHeight - this.paddleHeight)
+				this.rooms[0].rightPlayer.leftPaddleY = this.canvasHeight - this.paddleHeight;
 			this.rooms[0].leftPlayer.rightPaddleY = this.rooms[0].rightPlayer.leftPaddleY;
 		}
-		// this.server.to(this.rooms[0].leftPlayer.socketId).emit('upKey', this.rooms[0].leftPlayer);
-		// this.server.to(this.rooms[0].rightPlayer.socketId).emit('upKey', this.rooms[0].rightPlayer);
 	}
 
 	// Down Key pressed : Paddle down
