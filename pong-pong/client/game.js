@@ -88,33 +88,26 @@ document.addEventListener('DOMContentLoaded', () => {
         }
       });
 
-    // window.addEventListener('keypress', (key) => {
-    //     if (key.keyCode === 13) {
-    //         console.log('enter')
-    //         playerSocket.emit('gameReady');
-    //     }
-    // });
-
-    // window.addEventListener('keypress', (key) => {
-    //     if (key.keyCode === 40) {
-    //         console.log('up')
-    //         playerSocket.emit('upKey');
-    //     }
-    // });
-
-    // window.addEventListener('keypress', (key) => {
-    //     if (key.keyCode === 38) {
-    //         console.log('down')
-    //         playerSocket.emit('downKey');
-    //     }
-    // });
-
-
 
     playerSocket.on('ballMove', (player) => {
         draw(player);
-        console.log('is drawing?');
-        console.log(player);
+    })
+    
+    playerSocket.on('endGame', (flag) => {
+        if (flag) {
+            context.globalAlpha = 1;
+            context.font = `${scoreTextSize * 2}px Arial`;
+            context.fillStyle = 'white';
+            context.textAlign = 'center';
+            context.fillText('You win', canvasWidth / 2, canvasHeight / 2);
+        }
+        else {
+            context.globalAlpha = 1;
+            context.font = `${scoreTextSize * 2}px Arial`;
+            context.fillStyle = 'white';
+            context.textAlign = 'center';
+            context.fillText('You lose', canvasWidth / 2, canvasHeight / 2);
+        }
     })
 
     function draw(player) {
@@ -137,19 +130,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
         context.globalAlpha = 1;
 
-        // if (player.leftPaddleY >= canvasHeight - paddleHeight) {
-        //     player.leftPaddleY = canvasHeight - paddleHeight;
-        // }
-        // if (player.leftPaddleY <= 0) {
-        //     player.leftPaddleY = 0;
-        // }
-
-        // if (player.rightPaddleY >= canvasHeight - paddleHeight) {
-        //     player.rightPaddleY = canvasHeight - paddleHeight;
-        // }
-        // if (player.rightPaddleY <= 0) {
-        //     player.rightPaddleY = 0;
-        // }
         console.log(paddleWidth, ' ', paddleHeight);
         context.fillStyle = 'white';
         context.fillRect(player.leftPaddleX, player.leftPaddleY, paddleWidth, paddleHeight);
