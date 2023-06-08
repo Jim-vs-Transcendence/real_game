@@ -7,25 +7,18 @@ document.addEventListener('DOMContentLoaded', () => {
     */
     const playerSocket = io();
 
+    let roomName;
+
     /*
     * Game variables
     */
 
-    // Game init
-
-    // left player일 경우 false, right player일 경우 true
-    // Canvas Ratio
-    // const widthRatio = 0.8; // 가로 비율 (0~1 사이 값)
-    // const heightRatio = 0.8; // 세로 비율 (0~1 사이 값)
-
-    // 윈도우의 크기에 따라 Canvas의 너비와 높이 계산
     let canvasWidth;
     let canvasHeight;
-    // Canvas를 body에 추가
+
     document.body.appendChild(canvas);
 
     // Ball Location
-
     let ballRadius;
 
     // Paddle
@@ -73,22 +66,30 @@ document.addEventListener('DOMContentLoaded', () => {
         draw(data);
     });
 
+    playerSocket.on('roomName', (data) => {
+        roomName = data;
+        console.log(roomName);
+    })
 
-    window.addEventListener('keydown', function(event) {
+    window.addEventListener('keydown', function (event) {
         if (event.key === 'Enter') {
-            playerSocket.emit('gameReady', 'room1');
+            console.log('enter press')
+            playerSocket.emit('gameReady', roomName);
         } else if (event.key === 'ArrowDown') {
-            playerSocket.emit('upKey');
+            console.log('up press')
+            playerSocket.emit('upKey', roomName);
         } else if (event.key === 'ArrowUp') {
-            playerSocket.emit('downKey');
+            console.log('down press')
+            playerSocket.emit('downKey', roomName);
         }
-      });
+    });
 
 
     playerSocket.on('ballMove', (player) => {
+        console.log(roomName);
         draw(player);
     })
-    
+
     playerSocket.on('endGame', (flag) => {
         if (flag) {
             context.globalAlpha = 1;

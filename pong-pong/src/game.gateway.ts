@@ -7,9 +7,6 @@ import { Room } from './data/playerData'
 export class GameGateway
 // implements OnGatewayConnection, OnGatewayDisconnect 
 {
-
-	// private test: gameDataDto = new gameDataDto();
-
 	// Canvas Info
 	private readonly canvasWidth: number = 1200;
 	private readonly canvasHeight: number = 600;
@@ -29,7 +26,6 @@ export class GameGateway
 
 	private rooms: Room[] = [];
 	private players: gameDataDto[] = [];
-	private drawFrame: any;
 
 	@WebSocketServer() server: Server;
 
@@ -59,16 +55,22 @@ export class GameGateway
 		room.rightPlayer.leftScore = room.leftPlayer.rightScore;
 		room.rightPlayer.rightScore = room.leftPlayer.leftScore;
 		if (room.leftPlayer.leftScore >= 3 || room.leftPlayer.rightScore >= 3) {
-			clearInterval(this.drawFrame);
+			clearInterval(room.dataFrame);
 			if (room.leftPlayer.leftScore >= 3) {
-				this.server.to(this.rooms[0].leftPlayer.socketId).emit('endGame', true);
-				this.server.to(this.rooms[0].rightPlayer.socketId).emit('endGame', false);
+				this.server.to(room.leftPlayer.socketId).emit('endGame', true);
+				this.server.to(room.rightPlayer.socketId).emit('endGame', false);
 			}
-			else{
-				this.server.to(this.rooms[0].leftPlayer.socketId).emit('endGame', false);
-				this.server.to(this.rooms[0].rightPlayer.socketId).emit('endGame', true);
+			else {
+				this.server.to(room.leftPlayer.socketId).emit('endGame', false);
+				this.server.to(room.rightPlayer.socketId).emit('endGame', true);
 			}
-			// this.rooms.shift();
+			const idx: number = this.rooms.indexOf(room);
+			// 어느 정도 wait 상태 부여
+			// 전적 추가
+			// 재시작 여부 판단 로직 추가
+			if (idx !== -1) {
+				this.rooms.splice(idx, 1);
+			}
 		}
 		room.leftPlayer.ballX = this.initBallX;
 		room.leftPlayer.ballY = this.initBallY;
@@ -85,68 +87,74 @@ export class GameGateway
 		room.rightPlayer.ballMoveY = false;
 	}
 
-	private async gamePlay() {
-		await this.sendGameData.bind(this)();
+	private async gamePlay(room: Room) {
+		await this.sendGameData.bind(this)(room);
 	}
 
-	private sendGameData() {
-		if (this.rooms[0].leftPlayer.ballX <= 0) {
-			this.rooms[0].leftPlayer.rightScore++;
-			this.resetGame(this.rooms[0]);
+	private sendGameData(room: Room) {
+		if (room.leftPlayer.ballX <= 0) {
+			room.leftPlayer.rightScore++;
+			this.resetGame(room);
 
 		}
-		if (this.rooms[0].leftPlayer.ballX >= this.canvasWidth - this.ballRadius * 2) {
-			this.rooms[0].leftPlayer.leftScore++;
-			this.resetGame(this.rooms[0]);
+		if (room.leftPlayer.ballX >= this.canvasWidth - this.ballRadius * 2) {
+			room.leftPlayer.leftScore++;
+			this.resetGame(room);
 		}
 
-		if (this.rooms[0].leftPlayer.ballY <= this.ballRadius) {
-			this.rooms[0].leftPlayer.ballMoveY = false;
-			this.rooms[0].rightPlayer.ballMoveY = false;
+		if (room.leftPlayer.ballY <= this.ballRadius) {
+			room.leftPlayer.ballMoveY = false;
+			room.rightPlayer.ballMoveY = false;
 		}
-		if (this.rooms[0].leftPlayer.ballY >= this.canvasHeight - this.ballRadius) {
-			this.rooms[0].leftPlayer.ballMoveY = true;
-			this.rooms[0].rightPlayer.ballMoveY = true;
-		}
-
-		if (this.rooms[0].leftPlayer.ballMoveY === true) {
-			this.rooms[0].leftPlayer.ballY -= this.rooms[0].leftPlayer.ballSpeed;
-			this.rooms[0].rightPlayer.ballY -= this.rooms[0].leftPlayer.ballSpeed;
-		}
-		else if (this.rooms[0].leftPlayer.ballMoveY === false) {
-			this.rooms[0].leftPlayer.ballY += this.rooms[0].leftPlayer.ballSpeed;
-			this.rooms[0].rightPlayer.ballY += this.rooms[0].leftPlayer.ballSpeed;
-		}
-		if (this.rooms[0].leftPlayer.ballMoveX === true) {
-			this.rooms[0].leftPlayer.ballX -= this.rooms[0].leftPlayer.ballSpeed;
-			this.rooms[0].rightPlayer.ballX += this.rooms[0].leftPlayer.ballSpeed;
-		}
-		else if (this.rooms[0].leftPlayer.ballMoveX === false) {
-			this.rooms[0].leftPlayer.ballX += this.rooms[0].leftPlayer.ballSpeed;
-			this.rooms[0].rightPlayer.ballX -= this.rooms[0].leftPlayer.ballSpeed;
+		if (room.leftPlayer.ballY >= this.canvasHeight - this.ballRadius) {
+			room.leftPlayer.ballMoveY = true;
+			room.rightPlayer.ballMoveY = true;
 		}
 
-		if (this.rooms[0].leftPlayer.ballX - (this.ballRadius * 2) <= this.initLeftPaddleX && this.rooms[0].leftPlayer.ballX >= this.initLeftPaddleX - this.paddleWidth) {
-			if (this.rooms[0].leftPlayer.ballY <= this.rooms[0].leftPlayer.leftPaddleY + this.paddleHeight && this.rooms[0].leftPlayer.ballY >= this.rooms[0].leftPlayer.leftPaddleY) {
-				this.rooms[0].leftPlayer.ballX = this.initLeftPaddleX + this.ballRadius * 2;
-				this.rooms[0].leftPlayer.ballMoveX = false;
-				this.rooms[0].rightPlayer.ballX = this.initRightPaddleX - this.ballRadius * 2;
-				this.rooms[0].rightPlayer.ballMoveX = true;
+		if (room.leftPlayer.ballMoveY === true) {
+			room.leftPlayer.ballY -= room.leftPlayer.ballSpeed;
+			room.rightPlayer.ballY -= room.leftPlayer.ballSpeed;
+		}
+		else if (room.leftPlayer.ballMoveY === false) {
+			room.leftPlayer.ballY += room.leftPlayer.ballSpeed;
+			room.rightPlayer.ballY += room.leftPlayer.ballSpeed;
+		}
+		if (room.leftPlayer.ballMoveX === true) {
+			room.leftPlayer.ballX -= room.leftPlayer.ballSpeed;
+			room.rightPlayer.ballX += room.leftPlayer.ballSpeed;
+		}
+		else if (room.leftPlayer.ballMoveX === false) {
+			room.leftPlayer.ballX += room.leftPlayer.ballSpeed;
+			room.rightPlayer.ballX -= room.leftPlayer.ballSpeed;
+		}
+
+		if (room.leftPlayer.ballX - (this.ballRadius * 2) <= this.initLeftPaddleX && room.leftPlayer.ballX >= this.initLeftPaddleX - this.paddleWidth) {
+			if (room.leftPlayer.ballY <= room.leftPlayer.leftPaddleY + this.paddleHeight && room.leftPlayer.ballY >= room.leftPlayer.leftPaddleY) {
+				room.leftPlayer.ballX = this.initLeftPaddleX + this.ballRadius * 2;
+				room.leftPlayer.ballMoveX = false;
+				room.rightPlayer.ballX = this.initRightPaddleX - this.ballRadius * 2;
+				room.rightPlayer.ballMoveX = true;
 
 			}
 		}
 
-		if (this.rooms[0].leftPlayer.ballX - (this.ballRadius * 2) <= this.initRightPaddleX && this.rooms[0].leftPlayer.ballX >= this.initRightPaddleX - this.paddleWidth) {
-			if (this.rooms[0].leftPlayer.ballY <= this.rooms[0].leftPlayer.rightPaddleY + this.paddleHeight && this.rooms[0].leftPlayer.ballY >= this.rooms[0].leftPlayer.rightPaddleY) {
-				this.rooms[0].leftPlayer.ballX = this.initRightPaddleX - this.ballRadius * 2;
-				this.rooms[0].leftPlayer.ballMoveX = true;
-				this.rooms[0].rightPlayer.ballX = this.initLeftPaddleX + this.ballRadius * 2;
-				this.rooms[0].rightPlayer.ballMoveX = false;
+		if (room.leftPlayer.ballX - (this.ballRadius * 2) <= this.initRightPaddleX && room.leftPlayer.ballX >= this.initRightPaddleX - this.paddleWidth) {
+			if (room.leftPlayer.ballY <= room.leftPlayer.rightPaddleY + this.paddleHeight && room.leftPlayer.ballY >= room.leftPlayer.rightPaddleY) {
+				room.leftPlayer.ballX = this.initRightPaddleX - this.ballRadius * 2;
+				room.leftPlayer.ballMoveX = true;
+				room.rightPlayer.ballX = this.initLeftPaddleX + this.ballRadius * 2;
+				room.rightPlayer.ballMoveX = false;
 			}
 		}
-		console.log(this.rooms[0].leftPlayer);
-		this.server.to(this.rooms[0].leftPlayer.socketId).emit('ballMove', this.rooms[0].leftPlayer);
-		this.server.to(this.rooms[0].rightPlayer.socketId).emit('ballMove', this.rooms[0].rightPlayer);
+		console.log(room.leftPlayer);
+		this.server.to(room.leftPlayer.socketId).emit('ballMove', room.leftPlayer);
+		this.server.to(room.rightPlayer.socketId).emit('ballMove', room.rightPlayer);
+	}
+
+	private findRoom(roomName: string): Room {
+		let room: Room = this.rooms.find((room: Room) =>
+			room.roomName === roomName);
+		return room;
 	}
 
 	@SubscribeMessage('connect')
@@ -167,6 +175,8 @@ export class GameGateway
 			room.leftPlayer.roomName = room.roomName;
 			room.rightPlayer.roomName = room.roomName;
 			this.rooms.push(room);
+			this.server.to(room.leftPlayer.socketId).emit('roomName', room.roomName);
+			this.server.to(room.rightPlayer.socketId).emit('roomName', room.roomName);
 		}
 	}
 
@@ -177,19 +187,25 @@ export class GameGateway
 		@MessageBody() roomName: string,
 	) {
 		console.log(roomName);
-		if (this.rooms[0].leftPlayer && client.id === this.rooms[0].leftPlayer.socketId) {
-			this.rooms[0].leftReady = true;
+		let room = this.findRoom(roomName);
+		if (room) {
+			if (room.leftPlayer && client.id === room.leftPlayer.socketId) {
+				room.leftReady = true;
+			}
+			else if (room.rightPlayer && client.id === room.rightPlayer.socketId) {
+				room.rightReady = true;
+			}
+			if (room.leftReady && room.rightReady) {
+				// game start
+				room.leftPlayer.ballMoveX = false;
+				room.leftPlayer.ballMoveY = false;
+				room.rightPlayer.ballMoveX = false;
+				room.rightPlayer.ballMoveY = false;
+				room.dataFrame = setInterval(() => this.gamePlay(room), 1000 / 60);
+			}
 		}
-		else if (this.rooms[0].rightPlayer && client.id === this.rooms[0].rightPlayer.socketId) {
-			this.rooms[0].rightReady = true;
-		}
-		if (this.rooms[0].leftReady && this.rooms[0].rightReady) {
-			// game start
-			this.rooms[0].leftPlayer.ballMoveX = false;
-			this.rooms[0].leftPlayer.ballMoveY = false;
-			this.rooms[0].rightPlayer.ballMoveX = false;
-			this.rooms[0].rightPlayer.ballMoveY = false;
-			this.drawFrame = setInterval(() => this.gamePlay(), 1000 / 60);
+		else {
+			console.log('no room');
 		}
 	}
 
@@ -197,19 +213,25 @@ export class GameGateway
 	@SubscribeMessage('upKey')
 	handlePaddleUp(
 		@ConnectedSocket() client: Socket,
-		// @MessageBody() roomName: string,
+		@MessageBody() roomName: string,
 	) {
-		if (this.rooms[0].leftPlayer && client.id === this.rooms[0].leftPlayer.socketId) {
-			this.rooms[0].leftPlayer.leftPaddleY += 30;
-			if (this.rooms[0].leftPlayer.leftPaddleY >= this.canvasHeight - this.paddleHeight)
-				this.rooms[0].leftPlayer.leftPaddleY = this.canvasHeight - this.paddleHeight;
-			this.rooms[0].rightPlayer.rightPaddleY = this.rooms[0].leftPlayer.leftPaddleY;
+		let room = this.findRoom(roomName);
+		if (room) {
+			if (room.leftPlayer && client.id === room.leftPlayer.socketId) {
+				room.leftPlayer.leftPaddleY += 30;
+				if (room.leftPlayer.leftPaddleY >= this.canvasHeight - this.paddleHeight)
+					room.leftPlayer.leftPaddleY = this.canvasHeight - this.paddleHeight;
+				room.rightPlayer.rightPaddleY = room.leftPlayer.leftPaddleY;
+			}
+			else if (room.rightPlayer && client.id === room.rightPlayer.socketId) {
+				room.rightPlayer.leftPaddleY += 30;
+				if (room.rightPlayer.leftPaddleY >= this.canvasHeight - this.paddleHeight)
+					room.rightPlayer.leftPaddleY = this.canvasHeight - this.paddleHeight;
+				room.leftPlayer.rightPaddleY = room.rightPlayer.leftPaddleY;
+			}
 		}
-		else if (this.rooms[0].rightPlayer && client.id === this.rooms[0].rightPlayer.socketId) {
-			this.rooms[0].rightPlayer.leftPaddleY += 30;
-			if (this.rooms[0].rightPlayer.leftPaddleY >= this.canvasHeight - this.paddleHeight)
-				this.rooms[0].rightPlayer.leftPaddleY = this.canvasHeight - this.paddleHeight;
-			this.rooms[0].leftPlayer.rightPaddleY = this.rooms[0].rightPlayer.leftPaddleY;
+		else {
+			console.log('No such room');
 		}
 	}
 
@@ -217,20 +239,22 @@ export class GameGateway
 	@SubscribeMessage('downKey')
 	handlePaddleDown(
 		@ConnectedSocket() client: Socket,
-		// @MessageBody() message: string,
+		@MessageBody() roomName: string,
 	) {
-		if (this.rooms[0].leftPlayer && client.id === this.rooms[0].leftPlayer.socketId) {
-			this.rooms[0].leftPlayer.leftPaddleY -= 30;
-			if (this.rooms[0].leftPlayer.leftPaddleY <= 0)
-				this.rooms[0].leftPlayer.leftPaddleY = 0;
-			this.rooms[0].rightPlayer.rightPaddleY = this.rooms[0].leftPlayer.leftPaddleY;
-		}
-		else if (this.rooms[0].rightPlayer && client.id === this.rooms[0].rightPlayer.socketId) {
-			this.rooms[0].rightPlayer.leftPaddleY -= 30;
-			if (this.rooms[0].rightPlayer.leftPaddleY <= 0)
-				this.rooms[0].rightPlayer.leftPaddleY = 0;
-			this.rooms[0].leftPlayer.rightPaddleY = this.rooms[0].rightPlayer.leftPaddleY;
+		let room = this.findRoom(roomName);
+		if (room) {
+			if (room.leftPlayer && client.id === room.leftPlayer.socketId) {
+				room.leftPlayer.leftPaddleY -= 30;
+				if (room.leftPlayer.leftPaddleY <= 0)
+					room.leftPlayer.leftPaddleY = 0;
+				room.rightPlayer.rightPaddleY = room.leftPlayer.leftPaddleY;
+			}
+			else if (room.rightPlayer && client.id === room.rightPlayer.socketId) {
+				room.rightPlayer.leftPaddleY -= 30;
+				if (room.rightPlayer.leftPaddleY <= 0)
+					room.rightPlayer.leftPaddleY = 0;
+				room.leftPlayer.rightPaddleY = room.rightPlayer.leftPaddleY;
+			}
 		}
 	}
-
 }
