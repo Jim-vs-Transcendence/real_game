@@ -1,4 +1,4 @@
-import { gameDataDto } from "src/gameDto/gameData.dto";
+import { gameDataDto } from "../gameDto/gameData.dto";
 
 export class Room {
     isEnd: boolean;
