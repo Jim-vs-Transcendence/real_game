@@ -55,26 +55,36 @@ export class GameGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
 	handleConnection(
 		@ConnectedSocket() client: Socket
 	) {
-		console.log(client.id, 'connecting');
-		let player: gameDataDto = new gameDataDto();
-		this.service.initPlayer(player, client.id);
-		console.log(player);
-		this.server.to(client.id).emit('connected', player);
-		this.players.push(player);
 
-		if (this.players.length >= 2) {
-			console.log(this.players.length);
-			let room: Room = new Room();
-			room.leftPlayer = this.players.shift();
-			room.rightPlayer = this.players.shift();
-			room.roomName = room.leftPlayer.socketId;
-			room.leftPlayer.roomName = room.roomName;
-			room.rightPlayer.roomName = room.roomName;
-			this.rooms.push(room);
-			this.server.to(room.leftPlayer.socketId).emit('roomName', room.roomName);
-			this.server.to(room.rightPlayer.socketId).emit('roomName', room.roomName);
+		this.server.to(client.id).emit('handShaking', true);
+	}
+
+	@SubscribeMessage('handShaking')
+	pushPlayer(
+		@ConnectedSocket() client: Socket,
+		@MessageBody() flag: boolean,
+	) {
+		if (flag) {
+			let player: gameDataDto = new gameDataDto();
+			this.service.initPlayer(player, client.id);
+			console.log(player);
+			this.server.to(client.id).emit('connected', player);
+			this.players.push(player);
+			if (this.players.length >= 2) {
+				console.log(this.players.length);
+				let room: Room = new Room();
+				room.leftPlayer = this.players.shift();
+				room.rightPlayer = this.players.shift();
+				room.roomName = room.leftPlayer.socketId;
+				room.leftPlayer.roomName = room.roomName;
+				room.rightPlayer.roomName = room.roomName;
+				this.rooms.push(room);
+				this.server.to(room.leftPlayer.socketId).emit('roomName', room.roomName);
+				this.server.to(room.rightPlayer.socketId).emit('roomName', room.roomName);
+			}
 		}
 	}
+
 
 	// Enter Key pressed : game ready
 	@SubscribeMessage('gameReady')

@@ -172,6 +172,11 @@
 			initPlayer(Player);
 			draw(Player);
 		});
+		io_game.on('handShaking', (flag: boolean) => {
+			if (flag) {
+				io_game.emit('handShaking', true);
+			}
+		});
 
 		io_game.on('roomName', (name: string) => {
 			console.log('room name: ', name);
